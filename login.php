@@ -1,37 +1,38 @@
 <?php
-    require 'dbConnect.php';
-    if (isset($_POST['KH_Email']) && isset($_POST['KH_Password'])) {
-        $email=$_POST['KH_Email'];
-        $password=$_POST['KH_Password'];
-        
-        $checkUser="SELECT * FROM KhachHang WHERE KH_Email='$email' ";
+require 'dbConnect.php';
+session_start();
 
-        $result=mysqli_query($conn,$checkUser);
-       
-        if(mysqli_num_rows($result)>0){ 
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $email = $_POST['Email'];
+    $password = $_POST['Password'];
 
-            $checkUserquery="SELECT * FROM KhachHang WHERE KH_Email='$email' and KH_Password='$password'";
-            $resultant=mysqli_query($conn,$checkUserquery);
-            
-            if(mysqli_num_rows($resultant)>0){
-
-            while($row=$resultant->fetch_assoc())
-                $response['user'] = $row;
-                $response['error']="200";
-                $response['message']="Login successfully";
-            }else{
-                $response['user']='';
-                $response['error']="400";
-                $response['message']="Wrong credentials";
-
-            } 
-            
-        }else{
-            $response['user']='';
-            $response['error']="400";
-            $response['message']="Your account is not exist!";
-        }
-
-        echo json_encode($response);
+    // Xử lý trường hợp người dùng không nhập dữ liệu
+    if (empty($email) || empty($password)) {
+        $errMessage = "Vui lòng nhập email và mật khẩu";
+        $_SESSION['error'] = $errMessage;
+        header("Location: ../frontend/login.php");
+        exit();
     }
+
+    // Sử dụng Prepared Statements để tránh SQL Injection
+    $stmt = $conn->prepare("SELECT KH_HoTen FROM KhachHang WHERE KH_Email=? AND KH_Password=?");
+    $stmt->bind_param("ss", $email, $password);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        // Đăng nhập thành công
+        $row = $result->fetch_assoc();
+        $_SESSION['email'] = $email;
+        $_SESSION['username'] = $row['KH_HoTen'];
+        header("Location: ../frontend/index.php");
+        exit();
+    } else {
+        // Sai thông tin đăng nhập
+        $errMessage = "Thông tin đăng nhập không chính xác";
+        $_SESSION['error'] = $errMessage;
+        header("Location: ../frontend/login.php");
+        exit();
+    }
+}
 ?>
